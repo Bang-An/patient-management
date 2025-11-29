@@ -5,6 +5,7 @@ import com.pm.patientservice.dto.PatientResponseDto;
 import com.pm.patientservice.exception.EmailAlreadyExistsException;
 import com.pm.patientservice.exception.PatientNotFoundException;
 import com.pm.patientservice.grpc.BillingServiceGrpcClient;
+import com.pm.patientservice.kafka.KafkaProducer;
 import com.pm.patientservice.mapper.PatientMapper;
 import com.pm.patientservice.model.Patient;
 import com.pm.patientservice.repository.PatientRepository;
@@ -20,10 +21,13 @@ import java.util.stream.Collectors;
 public class PatientService {
     private PatientRepository patientRepository;
     private BillingServiceGrpcClient billingServiceGrpcClient;
+    private KafkaProducer kafkaProducer;
 
-    public PatientService(PatientRepository patientRepository, BillingServiceGrpcClient billingServiceGrpcClient) {
+    public PatientService(PatientRepository patientRepository, BillingServiceGrpcClient billingServiceGrpcClient,
+                          KafkaProducer kafkaProducer) {
         this.patientRepository = patientRepository;
         this.billingServiceGrpcClient = billingServiceGrpcClient;
+        this.kafkaProducer = kafkaProducer;
     }
 
     public List<PatientResponseDto> getPatients() {
@@ -40,12 +44,14 @@ public class PatientService {
             throw new EmailAlreadyExistsException("A patient with this email" + "already exists: " + patientRequestDto.getEmail());
         }
 
-        Patient patient = patientRepository.save(
+        Patient newPatient = patientRepository.save(
                 PatientMapper.toModel(patientRequestDto));
 
-        billingServiceGrpcClient.createBillingAccount(patient.getId().toString(), patient.getName(), patient.getEmail());
+        billingServiceGrpcClient.createBillingAccount(newPatient.getId().toString(), newPatient.getName(), newPatient.getEmail());
 
-        return PatientMapper.toDto(patient);
+        kafkaProducer.sendEvent(newPatient);
+
+        return PatientMapper.toDto(newPatient);
     }
 
     public PatientResponseDto updatePatient(UUID id, PatientRequestDto patientRequestDto) {

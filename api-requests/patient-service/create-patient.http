@@ -2,9 +2,9 @@ POST http://localhost:4000/patients
 Content-Type: application/json
 
 {
-  "name": "Patient with a billing acc6",
+  "name": "Analytics Kafka test 23",
   "address": "xxx address",
-  "email" : "patient6@123.com",
+  "email" : "Analyticskafk23@gmail.com",
   "dateOfBirth": "1995-01-01",
   "registeredDate": "2025-11-22"
 }
